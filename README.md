@@ -19,7 +19,7 @@ A modern, responsive video sharing platform built with React.js that allows user
 - **Custom Hooks**: Reusable logic for videos and debouncing
 - **Error Handling**: Comprehensive error boundaries and user feedback
 - **Accessibility**: ARIA labels, keyboard navigation, screen reader support
-- **Development Tools**: ESLint, Prettier, TypeScript support
+- **Development Tools**: ESLint, Prettier for code quality
 
 ## 🛠️ Technology Stack
 
@@ -28,7 +28,7 @@ A modern, responsive video sharing platform built with React.js that allows user
 - **State Management**: Custom hooks with Context API
 - **HTTP Client**: Axios with interceptors
 - **Notifications**: Notistack for user feedback
-- **Development**: ESLint, Prettier, TypeScript
+- **Development**: ESLint, Prettier
 - **Testing**: Jest, React Testing Library
 
 ## 📦 Installation
