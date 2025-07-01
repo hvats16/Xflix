@@ -1,132 +1,302 @@
-import * as React from 'react';
-import { useState } from 'react';
-import Button from '@mui/material/Button';
-import TextField from '@mui/material/TextField';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
-import { FormControl, InputLabel, MenuItem, Select,FormHelperText } from '@mui/material';
-import axios from 'axios';
-import endPoint from '../config';
-import { useSnackbar } from 'notistack'
+import React, { useState, useCallback } from 'react';
+import {
+  Button,
+  TextField,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  FormHelperText,
+  CircularProgress,
+  Alert
+} from '@mui/material';
+import { useSnackbar } from 'notistack';
 import { useNavigate } from "react-router-dom";
+import { useVideos } from '../hooks/useVideos';
+import { validateVideoData } from '../utils/helpers';
 
-export default function UploadDialog({open,handleClose}) {
-  let [isUploading,setIsUploading]=useState(false);
+const UploadDialog = React.memo(({ open, onClose }) => {
+  const [isUploading, setIsUploading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [uploadError, setUploadError] = useState("");
+  
   const navigate = useNavigate();
-  const { enqueueSnackbar } = useSnackbar()
-  const [data,setData]=useState({
+  const { enqueueSnackbar } = useSnackbar();
+  const { uploadVideo } = useVideos();
+  
+  const [formData, setFormData] = useState({
     videoLink: "",
     title: "",
     genre: "",
     contentRating: "",
     releaseDate: "",
-    previewImage:""
-  }
-  );
-    const onChangeHandler=(e)=>{
-      setData({...data,[e.target.name]:e.target.value});
-    }
+    previewImage: ""
+  });
 
-    const handleUpload=async()=>{
-      try{
-        setIsUploading(true);
-        let res=await axios.post(endPoint,data);
-        console.log(res);
-        handleClose();
-        enqueueSnackbar(`Uploaded Successfully`,{variant:"default"});
-      }catch(err){
-        console.log(err);
-      }
+  // Handle form field changes
+  const handleInputChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear specific field error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ""
+      }));
     }
+  }, [errors]);
+
+  // Validate and upload video
+  const handleUpload = useCallback(async () => {
+    try {
+      setUploadError("");
+      
+      // Validate form data
+      const validation = validateVideoData(formData);
+      if (!validation.isValid) {
+        setErrors(validation.errors);
+        return;
+      }
+
+      setIsUploading(true);
+      const result = await uploadVideo(formData);
+      
+      if (result.success) {
+        enqueueSnackbar('Video uploaded successfully!', { variant: 'success' });
+        onClose();
+        
+        // Reset form
+        setFormData({
+          videoLink: "",
+          title: "",
+          genre: "",
+          contentRating: "",
+          releaseDate: "",
+          previewImage: ""
+        });
+        
+        // Navigate to home to see the new video
+        navigate("/");
+      } else {
+        setUploadError(result.error || 'Upload failed');
+      }
+    } catch (error) {
+      setUploadError('An unexpected error occurred');
+      // console.error('Upload error:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  }, [formData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle dialog close
+  const handleClose = useCallback(() => {
+    if (!isUploading) {
+      onClose();
+    }
+  }, [isUploading, onClose]);
+
+  const genreOptions = [
+    { value: "Education", label: "Education" },
+    { value: "Sports", label: "Sports" },
+    { value: "Comedy", label: "Comedy" },
+    { value: "Lifestyle", label: "Lifestyle" }
+  ];
+
+  const ratingOptions = [
+    { value: "7+", label: "7+" },
+    { value: "12+", label: "12+" },
+    { value: "16+", label: "16+" },
+    { value: "18+", label: "18+" }
+  ];
 
   return (
-      <Dialog open={open} onClose={handleClose}>
-        <DialogTitle>Upload Video</DialogTitle>
-        <DialogContent sx={{
-          scrollbarWidth:"thin",
+    <Dialog 
+      open={open} 
+      onClose={handleClose}
+      maxWidth="sm"
+      fullWidth
+      disableEscapeKeyDown={isUploading}
+    >
+      <DialogTitle>Upload Video</DialogTitle>
+      
+      <DialogContent 
+        sx={{
+          scrollbarWidth: "thin",
           display: "flex",
           gap: 2,
           flexDirection: "column",
           paddingTop: "10px !important",
-        }}>
-          <DialogContentText>
-          </DialogContentText>
-          <TextField
-            onChange={onChangeHandler}
-            value={data.videoLink}
-            autoFocus
-            margin="dense"
-            name="videoLink"
-            label="Video Link"
-            type="text"
-            fullWidth
-            variant="outlined"
-            helperText="This link will be used to derive the video"
-          />
-          <TextField
-            onChange={onChangeHandler}
-            value={data.previewImage}
-            margin="dense"
-            name="previewImage"
-            label="Thumbnail Image Link"
-            type="text"
-            fullWidth
-            variant="outlined"
-            helperText="This link will be used to preview the thumbnail image"
-          />
-          <TextField
-          onChange={onChangeHandler}
-          value={data.title}
-            margin="dense"
-            name="title"
-            label="Title"
-            type="text"
-            fullWidth
-            variant="outlined"
-            helperText="The title will be representative text for the video"
-          />
-         <FormControl sx={{width: "100%" }} size="Medium"  margin="dense">
-            <InputLabel id="genre">Genre</InputLabel>
-          <Select  name="genre" value={data.genre} label="Genre" type="text" fullWidth variant="outlined" onChange={onChangeHandler}>
-            <MenuItem name="genre" value="Education">Education</MenuItem>
-            <MenuItem name="genre" value="Sports">Sports</MenuItem>
-            <MenuItem name="genre" value="Comedy">Comedy</MenuItem>
-            <MenuItem name="genre" value="Lifestyle">Lifestyle</MenuItem>
-          </Select>
-          <FormHelperText>Genre will help in categorizing your videos</FormHelperText>
-          </FormControl>
+        }}
+      >
+        <DialogContentText>
+          Fill in the details below to upload your video.
+        </DialogContentText>
 
-          <FormControl sx={{width: "100%" }} size="Medium"  margin="dense">
-            <InputLabel id="contentRating">Suitable age group for the video</InputLabel>
-          <Select name="contentRating" value={data.contentRating} label="Suitable age group for the video" type="text" fullWidth variant="outlined" onChange={onChangeHandler} >
-            <MenuItem name="contentRating" value="7+">7+</MenuItem>
-            <MenuItem name="contentRating" value="12+">12+</MenuItem>
-            <MenuItem name="contentRating" value="16+">16+</MenuItem>
-            <MenuItem name="contentRating" value="18+">18+</MenuItem>
-          </Select>
-          <FormHelperText>This will be used to filter videos on age group suitability</FormHelperText>
-          </FormControl>
+        {/* Upload Error */}
+        {uploadError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {uploadError}
+          </Alert>
+        )}
 
-          <TextField
-          onChange={onChangeHandler}
-          value={data.releaseDate}
-            InputLabelProps={{shrink:true}}
-            margin="dense"
-            name="releaseDate"
-            label="Release Date"
-            type="date"
-            fullWidth
-            variant="outlined"
-            helperText="The will be used to sort videos"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button variant="contained" onClick={handleUpload} disabled={isUploading ? true : false}>{isUploading ? "Uploading" : "Upload"}</Button>
-          <Button color="secondary" onClick={()=>{navigate("/"); handleClose()}}>Cancel</Button>
-        </DialogActions>
-      </Dialog>
+        {/* Video Link */}
+        <TextField
+          onChange={handleInputChange}
+          value={formData.videoLink}
+          autoFocus
+          margin="dense"
+          name="videoLink"
+          label="Video Link"
+          type="url"
+          fullWidth
+          variant="outlined"
+          helperText="Enter the YouTube or video URL"
+          error={!!errors.videoLink}
+          disabled={isUploading}
+          required
+        />
+        {errors.videoLink && (
+          <FormHelperText error>{errors.videoLink}</FormHelperText>
+        )}
+
+        {/* Thumbnail Image */}
+        <TextField
+          onChange={handleInputChange}
+          value={formData.previewImage}
+          margin="dense"
+          name="previewImage"
+          label="Thumbnail Image Link"
+          type="url"
+          fullWidth
+          variant="outlined"
+          helperText="URL for the video thumbnail image"
+          error={!!errors.previewImage}
+          disabled={isUploading}
+        />
+
+        {/* Title */}
+        <TextField
+          onChange={handleInputChange}
+          value={formData.title}
+          margin="dense"
+          name="title"
+          label="Title"
+          type="text"
+          fullWidth
+          variant="outlined"
+          helperText="Enter a descriptive title for your video"
+          error={!!errors.title}
+          disabled={isUploading}
+          required
+        />
+        {errors.title && (
+          <FormHelperText error>{errors.title}</FormHelperText>
+        )}
+
+        {/* Genre */}
+        <FormControl 
+          fullWidth 
+          margin="dense" 
+          error={!!errors.genre}
+          disabled={isUploading}
+          required
+        >
+          <InputLabel>Genre</InputLabel>
+          <Select
+            name="genre"
+            value={formData.genre}
+            label="Genre"
+            onChange={handleInputChange}
+          >
+            {genreOptions.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </Select>
+          <FormHelperText>
+            {errors.genre || "Select the video category"}
+          </FormHelperText>
+        </FormControl>
+
+        {/* Content Rating */}
+        <FormControl 
+          fullWidth 
+          margin="dense"
+          error={!!errors.contentRating}
+          disabled={isUploading}
+          required
+        >
+          <InputLabel>Age Rating</InputLabel>
+          <Select
+            name="contentRating"
+            value={formData.contentRating}
+            label="Age Rating"
+            onChange={handleInputChange}
+          >
+            {ratingOptions.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </Select>
+          <FormHelperText>
+            {errors.contentRating || "Select appropriate age group"}
+          </FormHelperText>
+        </FormControl>
+
+        {/* Release Date */}
+        <TextField
+          onChange={handleInputChange}
+          value={formData.releaseDate}
+          InputLabelProps={{ shrink: true }}
+          margin="dense"
+          name="releaseDate"
+          label="Release Date"
+          type="date"
+          fullWidth
+          variant="outlined"
+          helperText="When was this video released?"
+          error={!!errors.releaseDate}
+          disabled={isUploading}
+          required
+        />
+        {errors.releaseDate && (
+          <FormHelperText error>{errors.releaseDate}</FormHelperText>
+        )}
+      </DialogContent>
+
+      <DialogActions sx={{ p: 2, gap: 1 }}>
+        <Button
+          onClick={handleUpload}
+          variant="contained"
+          disabled={isUploading}
+          startIcon={isUploading ? <CircularProgress size={16} /> : null}
+        >
+          {isUploading ? "Uploading..." : "Upload"}
+        </Button>
+        
+        <Button
+          color="secondary"
+          onClick={handleClose}
+          disabled={isUploading}
+        >
+          Cancel
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
-}
+});
+
+UploadDialog.displayName = 'UploadDialog';
+
+export default UploadDialog;
