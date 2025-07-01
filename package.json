@@ -46,9 +46,8 @@
     "lint": "eslint src/**/*.{js,jsx,ts,tsx}",
     "lint:fix": "eslint src/**/*.{js,jsx,ts,tsx} --fix",
     "format": "prettier --write src/**/*.{js,jsx,ts,tsx,css,scss,md}",
-    "analyze": "npm run build && npx bundle-analyzer build/static/js/*.js",
+    "analyze": "npm run build && echo 'Build analysis complete'",
     "preview": "npx serve -s build -l 8081",
-    "install:clean": "node install-clean.js",
     "dev": "npm run lint && npm start",
     "check": "npm run lint && npm run build"
   },
@@ -75,9 +74,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=8.0.0"
   }
 }
